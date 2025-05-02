@@ -1,0 +1,106 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to create a Highlight instance
+local function createHighlight(target, teamColor)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "PlayerHighlight"
+    highlight.Adornee = target
+    highlight.FillColor = teamColor or Color3.new(1, 0, 0) -- Default to red if no team color
+    highlight.OutlineColor = Color3.new(1, 1, 1) -- White outline
+    highlight.FillTransparency = 0.5 -- Adjust transparency of the highlight
+    highlight.OutlineTransparency = 0 -- Outline is fully visible
+    highlight.Parent = target
+end
+
+-- Function to create a nametag above a player's head
+local function createNametag(character, playerName)
+    if character:FindFirstChild("Head") and not character:FindFirstChild("Nametag") then
+        local head = character.Head
+
+        -- Create BillboardGui
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Name = "Nametag"
+        billboardGui.Adornee = head
+        billboardGui.Size = UDim2.new(4, 0, 1, 0) -- Width and height of the nametag
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0) -- Position above the head
+        billboardGui.AlwaysOnTop = true
+
+        -- Create TextLabel
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0) -- Fit the size of the BillboardGui
+        textLabel.BackgroundColor3 = Color3.new(0, 0, 0) -- Black background
+        textLabel.BackgroundTransparency = 0.5 -- Semi-transparent background
+        textLabel.BorderSizePixel = 0 -- No border
+        textLabel.Text = playerName
+        textLabel.TextColor3 = Color3.new(1, 1, 1) -- White text
+        textLabel.Font = Enum.Font.GothamBold -- More readable font
+        textLabel.TextScaled = true
+
+        -- Add a text shadow effect
+        local shadow = Instance.new("TextLabel")
+        shadow.Parent = billboardGui
+        shadow.Size = textLabel.Size
+        shadow.Position = UDim2.new(0, 2, 0, 2) -- Offset slightly for shadow
+        shadow.BackgroundTransparency = 1 -- Transparent background
+        shadow.BorderSizePixel = 0
+        shadow.Text = playerName
+        shadow.TextColor3 = Color3.new(0, 0, 0) -- Black shadow
+        shadow.Font = Enum.Font.GothamBold
+        shadow.TextScaled = true
+        shadow.ZIndex = textLabel.ZIndex - 1 -- Behind the main label
+
+        billboardGui.Parent = head
+    end
+end
+
+-- Function to update all player highlights and nametags
+local function updatePlayerVisuals()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local adornee = character
+                local teamColor = player.Team and player.TeamColor.Color or nil -- Get team color
+
+                if not adornee:FindFirstChild("PlayerHighlight") then
+                    createHighlight(adornee, teamColor)
+                end
+                createNametag(character, player.Name)
+            end
+        end
+    end
+end
+
+-- Listen for player character added
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(1) -- Wait for character to fully load
+        updatePlayerVisuals()
+    end)
+
+    -- Listen for team changes
+    player:GetPropertyChangedSignal("Team"):Connect(function()
+        local character = player.Character
+        if character then
+            local highlight = character:FindFirstChild("PlayerHighlight")
+            if highlight then
+                highlight.FillColor = player.Team and player.TeamColor.Color or Color3.new(1, 0, 0)
+            end
+        end
+    end)
+end
+
+-- Main logic
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        onPlayerAdded(player)
+        if player.Character then
+            task.wait(1) -- Ensure existing players get updated visuals
+            updatePlayerVisuals()
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
